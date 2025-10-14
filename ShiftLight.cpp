@@ -55,20 +55,35 @@ void ShiftLight::showRPM(uint8_t leds) {
 
   switch (leds) {
     case 16: pixels.setPixelColor(15, getColorForLED(15));
+          // fall through
     case 15: pixels.setPixelColor(14, getColorForLED(14));
+            // fall through
     case 14: pixels.setPixelColor(13, getColorForLED(13));
+            // fall through
     case 13: pixels.setPixelColor(12, getColorForLED(12));
+            // fall through
     case 12: pixels.setPixelColor(11, getColorForLED(11));
+            // fall through
     case 11: pixels.setPixelColor(10, getColorForLED(10));
+            // fall through
     case 10: pixels.setPixelColor(9, getColorForLED(9));
+            // fall through
     case 9:  pixels.setPixelColor(8, getColorForLED(8));
+            // fall through
     case 8:  pixels.setPixelColor(7, getColorForLED(7));
+            // fall through
     case 7:  pixels.setPixelColor(6, getColorForLED(6));
+            // fall through
     case 6:  pixels.setPixelColor(5, getColorForLED(5));
+            // fall through
     case 5:  pixels.setPixelColor(4, getColorForLED(4));
+            // fall through
     case 4:  pixels.setPixelColor(3, getColorForLED(3));
+            // fall through
     case 3:  pixels.setPixelColor(2, getColorForLED(2));
+            // fall through
     case 2:  pixels.setPixelColor(1, getColorForLED(1));
+            // fall through
     case 1:  pixels.setPixelColor(0, getColorForLED(0));
     case 0:  break;
   }
