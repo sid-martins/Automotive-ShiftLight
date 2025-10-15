@@ -9,7 +9,7 @@ ShiftLight::ShiftLight(uint8_t pin, uint8_t numPixels, uint16_t maxRPM, uint16_t
   _maxRPM = maxRPM;
   _shiftRPM = shiftRPM;
   _ledsToLight = 0;
-  _lastLedsToLight = 0;
+  _lastLedsToLight = 255;  // força atualização no primeiro loop
   _lastBlinkTime = 0;
   _blinkState = false;
 }
@@ -25,67 +25,58 @@ void ShiftLight::setBrightness(uint8_t b) {
 }
 
 void ShiftLight::update(uint16_t rpm) {
-  _ledsToLight = map(rpm, 0, _maxRPM, 0, pixels.numPixels());
+  // Garante que o valor fique dentro dos limites
+  rpm = constrain(rpm, 0, _maxRPM);
+  uint8_t num = pixels.numPixels();
 
+  // Calcula LEDs acesos proporcionalmente ao RPM
+  _ledsToLight = map(rpm, 0, _maxRPM, 0, num);
+  if (_ledsToLight > num) _ledsToLight = num;
+
+  // Modo piscante (shift)
   if (rpm >= _shiftRPM) {
     unsigned long now = millis();
-    if (now - _lastBlinkTime >= 100) {
+    if (now - _lastBlinkTime >= 100) {  // pisca a cada 100ms
       _lastBlinkTime = now;
       _blinkState = !_blinkState;
 
-      if (_blinkState) pixels.fill(COR_3, 0, pixels.numPixels());
+      if (_blinkState) pixels.fill(COR_3, 0, num);
       else pixels.clear();
 
       pixels.show();
     }
-  } else if (_ledsToLight != _lastLedsToLight) {
-    showRPM(_ledsToLight);
-    _lastLedsToLight = _ledsToLight;
+  } 
+  else {
+    // Saiu do modo shift, garante LEDs acesos normalmente
+    if (_blinkState) {
+      _blinkState = false;
+      pixels.clear();
+    }
+
+    // Atualiza LEDs apenas se houve mudança
+    if (_ledsToLight != _lastLedsToLight) {
+      showRPM(_ledsToLight);
+      _lastLedsToLight = _ledsToLight;
+    }
   }
 }
 
 uint32_t ShiftLight::getColorForLED(uint8_t index) {
-  if (index < 4) return COR_1;
-  else if (index < 10) return COR_2;
-  else return COR_3;
+  // Divisão em zonas
+  if (index < 4) return COR_1;      // primeiros LEDs: verde
+  else if (index < 10) return COR_2; // meio: amarelo
+  else return COR_3;                // final: vermelho
 }
 
 void ShiftLight::showRPM(uint8_t leds) {
   pixels.clear();
 
-  switch (leds) {
-    case 16: pixels.setPixelColor(15, getColorForLED(15));
-          // fall through
-    case 15: pixels.setPixelColor(14, getColorForLED(14));
-            // fall through
-    case 14: pixels.setPixelColor(13, getColorForLED(13));
-            // fall through
-    case 13: pixels.setPixelColor(12, getColorForLED(12));
-            // fall through
-    case 12: pixels.setPixelColor(11, getColorForLED(11));
-            // fall through
-    case 11: pixels.setPixelColor(10, getColorForLED(10));
-            // fall through
-    case 10: pixels.setPixelColor(9, getColorForLED(9));
-            // fall through
-    case 9:  pixels.setPixelColor(8, getColorForLED(8));
-            // fall through
-    case 8:  pixels.setPixelColor(7, getColorForLED(7));
-            // fall through
-    case 7:  pixels.setPixelColor(6, getColorForLED(6));
-            // fall through
-    case 6:  pixels.setPixelColor(5, getColorForLED(5));
-            // fall through
-    case 5:  pixels.setPixelColor(4, getColorForLED(4));
-            // fall through
-    case 4:  pixels.setPixelColor(3, getColorForLED(3));
-            // fall through
-    case 3:  pixels.setPixelColor(2, getColorForLED(2));
-            // fall through
-    case 2:  pixels.setPixelColor(1, getColorForLED(1));
-            // fall through
-    case 1:  pixels.setPixelColor(0, getColorForLED(0));
-    case 0:  break;
+  // Garante que não ultrapasse o total de LEDs
+  if (leds > pixels.numPixels()) leds = pixels.numPixels();
+
+  // Acende LEDs de 0 até leds-1
+  for (uint8_t i = 0; i < leds; i++) {
+    pixels.setPixelColor(i, getColorForLED(i));
   }
 
   pixels.show();
