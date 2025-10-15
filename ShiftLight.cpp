@@ -1,7 +1,7 @@
 #include "ShiftLight.h"
 
 ShiftLight::ShiftLight(uint8_t pin, uint16_t numPixels, uint16_t maxRPM, uint16_t shiftRPM)
-    : pixels(numPixels, pin, NEO_GRB + NEO_KHZ800), _maxRPM(maxRPM), _shiftRPM(shiftRPM)
+    : pixels(numPixels, pin, NEO_GRB + NEO_KHZ800), _maxRPM(maxRPM), _shiftRPM(shiftRPM), _last_leds_to_light(255)
 {
     _shiftlight_timer = 0;
     _leds_same_since = 0;
@@ -17,17 +17,20 @@ void ShiftLight::setBrightness(uint8_t b) {
     pixels.setBrightness(b);
 }
 
-void ShiftLight::update(Dados &dados) {
-    uint8_t maxLeds = (uint8_t) (pixels.numPixels() < 16 ? pixels.numPixels() : 16);
-    long mapped = map((long)dados.rpm, 0L, (long)_maxRPM, 0L, 16L);
+void ShiftLight::update(uint16_t rpm) {
+    uint8_t maxLeds = (uint8_t)(pixels.numPixels() < 16 ? pixels.numPixels() : 16);
+
+    // calcula LEDs a acender
+    long mapped = map((long)rpm, 0L, (long)_maxRPM, 0L, 16L);
     if (mapped < 0) mapped = 0;
     if (mapped > 16) mapped = 16;
-    dados.leds_to_light = (uint8_t)mapped;
+    uint8_t leds_to_light = (uint8_t)mapped;
 
     unsigned long currentMillis = millis();
 
-    if (dados.rpm >= _shiftRPM) {
-        if (currentMillis - _shiftlight_timer >= 100UL) {
+    // modo shift (pisca vermelho)
+    if (rpm >= _shiftRPM) {
+        if (currentMillis - _shiftlight_timer >= 100UL) { // pisca a cada 100ms
             _shiftlight_timer = currentMillis;
             uint32_t redColor = pixels.Color(255, 0, 0);
             if (pixels.getPixelColor(0) == redColor) {
@@ -41,12 +44,14 @@ void ShiftLight::update(Dados &dados) {
         return;
     }
 
-    if (dados.leds_to_light != dados.last_leds_to_light) {
-        _showBySwitch(dados.leds_to_light);
+    // atualiza LEDs se houve mudança
+    if (leds_to_light != _last_leds_to_light) {
+        _showBySwitch(leds_to_light);
         pixels.show();
-        dados.last_leds_to_light = dados.leds_to_light;
+        _last_leds_to_light = leds_to_light;
         _leds_same_since = currentMillis;
     } else {
+        // timeout: apaga LEDs se valor constante por mais de 5s
         if (_leds_same_since == 0) _leds_same_since = currentMillis;
         if (currentMillis - _leds_same_since >= _leds_timeout_ms) {
             pixels.clear();
@@ -61,6 +66,7 @@ void ShiftLight::clearAll() {
     pixels.show();
 }
 
+// Switch com fallthrough para acender LEDs conforme a zona
 void ShiftLight::_showBySwitch(uint8_t leds) {
     pixels.clear();
     uint8_t total = pixels.numPixels();
